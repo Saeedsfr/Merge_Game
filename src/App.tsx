@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 import {
   initialState,
   spawnFreeItem,
@@ -8,19 +9,18 @@ import {
   consumeQueue,
   deleteItem,
   autoMergeTick,
-  levelColors,
-  levelStickers,
   getHighestLevel,
-  AUTO_MERGE_PRICE,
+  computeOfflineEarnings,
+  applyOfflineEarnings,
+  applyOfflineDouble,
   type GameState,
   type Cell,
 } from "./gameLogic";
 
+import { levelColors, levelStickers, AUTO_MERGE_PRICE } from "./core/config";
+
 const STORAGE_KEY = "merge-game-state-v1";
 const LAST_OFFLINE_KEY = "merge-game-last-offline";
-
-const MAX_OFFLINE_MS = 30 * 60 * 1000; // 30 دقیقه
-const DOUBLE_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 ساعت
 
 function App() {
   const [state, setState] = useState<GameState>(() => {
@@ -54,17 +54,15 @@ function App() {
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [state]);
 
   // ----------------------
-  // Idle income (1/sec) – incomePerSecond خودش /1000 شده
+  // Idle income (1/sec)
   // ----------------------
   useEffect(() => {
     const interval = setInterval(() => {
-      setState((prev) => ({
+      setState((prev: GameState) => ({
         ...prev,
         coins: prev.coins + prev.incomePerSecond,
       }));
@@ -77,7 +75,7 @@ function App() {
   // ----------------------
   useEffect(() => {
     const interval = setInterval(() => {
-      setState((prev) => consumeQueue(spawnFreeItem(prev)));
+      setState((prev: GameState) => consumeQueue(spawnFreeItem(prev)));
     }, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -87,7 +85,7 @@ function App() {
   // ----------------------
   useEffect(() => {
     const interval = setInterval(() => {
-      setState((prev) => autoMergeTick(prev));
+      setState((prev: GameState) => autoMergeTick(prev));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -95,8 +93,6 @@ function App() {
   // ----------------------
   // Offline handling
   // ----------------------
-
-  // هنگام mount: محاسبه درآمد آفلاین اگر lastOfflineAt وجود داشته باشد
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -107,29 +103,15 @@ function App() {
     if (!lastOfflineAt || Number.isNaN(lastOfflineAt)) return;
 
     const now = Date.now();
-    const offlineMs = now - lastOfflineAt;
-    if (offlineMs <= 0) return;
 
-    const effective = Math.min(offlineMs, MAX_OFFLINE_MS);
-
-    setState((prev) => {
-      const coinsGained = prev.incomePerSecond * (effective / 1000); // incomePerSecond already /1000
-      if (coinsGained <= 0) {
-        return { ...prev, offlinePopup: null };
-      }
-
-      const canDouble = offlineMs >= DOUBLE_THRESHOLD_MS;
-
+    setState((prev: GameState) => {
+      const popup = computeOfflineEarnings(prev, now);
       return {
         ...prev,
-        offlinePopup: {
-          coins: coinsGained,
-          canDouble,
-        },
+        offlinePopup: popup,
       };
     });
 
-    // یک بار مصرف
     window.localStorage.removeItem(LAST_OFFLINE_KEY);
   }, []);
 
@@ -141,9 +123,7 @@ function App() {
       if (document.hidden) {
         try {
           window.localStorage.setItem(LAST_OFFLINE_KEY, String(Date.now()));
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
     };
 
@@ -153,16 +133,14 @@ function App() {
     };
   }, []);
 
-  // احتیاط: قبل از unload هم ثبت کنیم
+  // قبل از unload هم ثبت کنیم
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleBeforeUnload = () => {
       try {
         window.localStorage.setItem(LAST_OFFLINE_KEY, String(Date.now()));
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -175,16 +153,16 @@ function App() {
 
   // ----------------------
   // Drag logic (manual)
-// ----------------------
+  // ----------------------
   function handleDrop(from: number, to: number) {
     if (from === to) return;
 
     if (to === -1) {
-      setState((prev) => deleteItem(prev, from));
+      setState((prev: GameState) => deleteItem(prev, from));
       return;
     }
 
-    setState((prev) => {
+    setState((prev: GameState) => {
       const fromCell = prev.grid[from];
       const toCell = prev.grid[to];
 
@@ -232,36 +210,19 @@ function App() {
   // Offline popup handlers
   // ----------------------
   function collectOffline() {
-    setState((prev) => {
+    setState((prev: GameState) => {
       if (!prev.offlinePopup) return prev;
-      return {
-        ...prev,
-        coins: prev.coins + prev.offlinePopup.coins,
-        offlinePopup: null,
-      };
+      return applyOfflineEarnings(prev, prev.offlinePopup);
     });
   }
 
   function doubleOfflineWithAd() {
-    // اینجا جای اتصال به SDK تبلیغ است
-    setState((prev) => {
+    setState((prev: GameState) => {
       if (!prev.offlinePopup) return prev;
-      if (!prev.offlinePopup.canDouble) {
-        return {
-          ...prev,
-          coins: prev.coins + prev.offlinePopup.coins,
-          offlinePopup: null,
-        };
-      }
-      return {
-        ...prev,
-        coins: prev.coins + prev.offlinePopup.coins * 2,
-        offlinePopup: null,
-      };
+      return applyOfflineDouble(prev, prev.offlinePopup);
     });
   }
 
-  // نمایش اعشاری با دو رقم
   const formatCoins = (n: number) => n.toFixed(2);
 
   return (
@@ -335,7 +296,7 @@ function App() {
                   <button
                     onClick={() => {
                       if (canUnlock) {
-                        setState((prev) => unlockCell(prev, index));
+                        setState((prev: GameState) => unlockCell(prev, index));
                       }
                     }}
                     style={{
@@ -422,7 +383,7 @@ function App() {
         </div>
       </div>
 
-      {/* Trash Bin (فقط آیکن) */}
+      {/* Trash Bin */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -462,7 +423,7 @@ function App() {
         }}
       >
         <button
-          onClick={() => setState((prev) => spawnFreeItem(prev))}
+          onClick={() => setState((prev: GameState) => spawnFreeItem(prev))}
           style={{
             padding: "10px 16px",
             borderRadius: 10,
@@ -477,7 +438,7 @@ function App() {
         </button>
 
         <button
-          onClick={() => setState((prev) => spawnAdItem(prev))}
+          onClick={() => setState((prev: GameState) => spawnAdItem(prev))}
           style={{
             padding: "10px 16px",
             borderRadius: 10,
@@ -493,7 +454,7 @@ function App() {
 
         <button
           onClick={() =>
-            setState((prev) => {
+            setState((prev: GameState) => {
               if (prev.autoMergeEnabled) return prev;
               if (prev.coins < AUTO_MERGE_PRICE) return prev;
 
