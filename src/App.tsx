@@ -14,15 +14,17 @@ import {
   applyOfflineEarnings,
   applyOfflineDouble,
   type GameState,
-  type Cell,
 } from "./gameLogic";
 
-import { levelColors, levelStickers, AUTO_MERGE_PRICE } from "./core/config";
+import GameGrid from "./ui/components/GameGrid";
+import TrashBin from "./ui/components/TrashBin";
+import Controls from "./ui/components/Controls";
+import OfflinePopup from "./ui/components/OfflinePopup";
 
 const STORAGE_KEY = "merge-game-state-v1";
 const LAST_OFFLINE_KEY = "merge-game-last-offline";
 
-function App() {
+export default function App() {
   const [state, setState] = useState<GameState>(() => {
     if (typeof window === "undefined") return initialState;
 
@@ -31,13 +33,12 @@ function App() {
       if (!saved) return initialState;
 
       const parsed = JSON.parse(saved) as GameState;
-      const tempState: GameState = {
+      return {
         ...parsed,
         incomePerSecond: calculateIncome(parsed),
         lastUpdatedAt: Date.now(),
         offlinePopup: null,
       };
-      return tempState;
     } catch {
       return initialState;
     }
@@ -58,7 +59,7 @@ function App() {
   }, [state]);
 
   // ----------------------
-  // Idle income (1/sec)
+  // Idle income
   // ----------------------
   useEffect(() => {
     const interval = setInterval(() => {
@@ -71,7 +72,7 @@ function App() {
   }, []);
 
   // ----------------------
-  // Free generator every 10s
+  // Free generator
   // ----------------------
   useEffect(() => {
     const interval = setInterval(() => {
@@ -81,7 +82,7 @@ function App() {
   }, []);
 
   // ----------------------
-  // Auto‑Merge tick every 1s
+  // Auto‑Merge tick
   // ----------------------
   useEffect(() => {
     const interval = setInterval(() => {
@@ -104,55 +105,42 @@ function App() {
 
     const now = Date.now();
 
-    setState((prev: GameState) => {
-      const popup = computeOfflineEarnings(prev, now);
-      return {
-        ...prev,
-        offlinePopup: popup,
-      };
-    });
+    setState((prev: GameState) => ({
+      ...prev,
+      offlinePopup: computeOfflineEarnings(prev, now),
+    }));
 
     window.localStorage.removeItem(LAST_OFFLINE_KEY);
   }, []);
 
-  // ثبت زمان آفلاین وقتی تب مخفی می‌شود
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const handleVisibility = () => {
       if (document.hidden) {
-        try {
-          window.localStorage.setItem(LAST_OFFLINE_KEY, String(Date.now()));
-        } catch {}
+        window.localStorage.setItem(LAST_OFFLINE_KEY, String(Date.now()));
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
+    return () =>
       document.removeEventListener("visibilitychange", handleVisibility);
-    };
   }, []);
 
-  // قبل از unload هم ثبت کنیم
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     const handleBeforeUnload = () => {
-      try {
-        window.localStorage.setItem(LAST_OFFLINE_KEY, String(Date.now()));
-      } catch {}
+      window.localStorage.setItem(LAST_OFFLINE_KEY, String(Date.now()));
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
+    return () =>
       window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
   }, []);
 
   const highestLevel = getHighestLevel(state);
 
   // ----------------------
-  // Drag logic (manual)
+  // Drag logic
   // ----------------------
   function handleDrop(from: number, to: number) {
     if (from === to) return;
@@ -179,7 +167,7 @@ function App() {
         newGrid[to] = { type: "item", level: toCell.level + 1 };
         newGrid[from] = { type: "empty" };
         didMerge = true;
-      } else if (toCell.type === "item") {
+      } else {
         newGrid[to] = fromCell;
         newGrid[from] = toCell;
       }
@@ -197,13 +185,6 @@ function App() {
 
       return consumeQueue(tempState);
     });
-  }
-
-  function isUnlockAllowed(index: number, grid: Cell[]): boolean {
-    if (index === 9) return true;
-    if (index === 10) return grid[9].type !== "locked";
-    if (index === 11) return grid[10].type !== "locked";
-    return false;
   }
 
   // ----------------------
@@ -233,255 +214,46 @@ function App() {
         padding: 20,
         color: "white",
         fontFamily: "sans-serif",
-        position: "relative",
       }}
     >
-      {/* Header */}
-      <div
+      <h1
         style={{
           fontSize: 24,
           fontWeight: "bold",
           marginBottom: 20,
           textAlign: "center",
-          letterSpacing: 1,
         }}
       >
         Merge Creatures
-      </div>
+      </h1>
 
-      {/* Grid Container */}
-      <div
-        style={{
-          padding: 16,
-          borderRadius: 16,
-          background: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 0 20px rgba(0,0,0,0.4)",
-          width: "fit-content",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 80px)",
-            gap: 10,
-          }}
-        >
-          {state.grid.map((cell: Cell, index: number) => {
-            if (cell.type === "locked") {
-              const sequentialAllowed = isUnlockAllowed(index, state.grid);
-              const canPay = state.coins >= cell.price;
-              const canUnlock = sequentialAllowed && canPay;
+      <GameGrid
+        state={state}
+        dragIndex={dragIndex}
+        hoverIndex={hoverIndex}
+        mergeFlashIndex={mergeFlashIndex}
+        setDragIndex={setDragIndex}
+        setHoverIndex={setHoverIndex}
+        handleDrop={handleDrop}
+        unlockCell={unlockCell}
+        setState={setState}
+      />
 
-              return (
-                <div
-                  key={index}
-                  style={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: 12,
-                    background: "rgba(255,255,255,0.08)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 12,
-                    color: "#bbb",
-                  }}
-                >
-                  🔒 {cell.price}
-                  <button
-                    onClick={() => {
-                      if (canUnlock) {
-                        setState((prev: GameState) => unlockCell(prev, index));
-                      }
-                    }}
-                    style={{
-                      marginTop: 4,
-                      padding: "2px 6px",
-                      borderRadius: 6,
-                      border: "none",
-                      background: canUnlock
-                        ? "#4b7bec"
-                        : sequentialAllowed
-                        ? "#555"
-                        : "#333",
-                      color: "white",
-                      cursor: canUnlock ? "pointer" : "not-allowed",
-                      fontSize: 10,
-                    }}
-                  >
-                    Unlock
-                  </button>
-                </div>
-              );
-            }
+      <TrashBin
+        dragIndex={dragIndex}
+        trashHover={trashHover}
+        setTrashHover={setTrashHover}
+        handleDrop={handleDrop}
+      />
 
-            const isItem = cell.type === "item";
-            const level = isItem ? (cell as any).level : 1;
-            const sticker = isItem ? levelStickers[level] : "";
-            const bg = isItem
-              ? levelColors[level]
-              : "rgba(255,255,255,0.05)";
+      <Controls
+        state={state}
+        highestLevel={highestLevel}
+        spawnFreeItem={spawnFreeItem}
+        spawnAdItem={spawnAdItem}
+        setState={setState}
+      />
 
-            const isDragging = dragIndex === index;
-            const isHover = hoverIndex === index;
-            const isFlash = mergeFlashIndex === index;
-
-            return (
-              <div
-                key={index}
-                draggable={isItem}
-                onDragStart={() => isItem && setDragIndex(index)}
-                onDragEnd={() => {
-                  setDragIndex(null);
-                  setHoverIndex(null);
-                  setTrashHover(false);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setHoverIndex(index);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setHoverIndex(null);
-                  if (dragIndex !== null) handleDrop(dragIndex, index);
-                }}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 12,
-                  background: bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 34,
-                  transition:
-                    "transform 150ms ease, box-shadow 150ms ease, background 150ms ease",
-                  transform: isFlash
-                    ? "scale(1.15)"
-                    : isDragging
-                    ? "scale(1.1)"
-                    : isHover
-                    ? "scale(1.05)"
-                    : "scale(1)",
-                  boxShadow: isFlash
-                    ? "0 0 15px rgba(0,255,150,0.9)"
-                    : isHover
-                    ? "0 0 10px rgba(255,255,255,0.3)"
-                    : "0 0 6px rgba(0,0,0,0.4)",
-                  cursor: isItem ? "grab" : "default",
-                }}
-              >
-                {sticker}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Trash Bin */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setTrashHover(true);
-        }}
-        onDragLeave={() => setTrashHover(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (dragIndex !== null) handleDrop(dragIndex, -1);
-          setTrashHover(false);
-        }}
-        style={{
-          marginTop: 10,
-          width: 60,
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: trashHover ? 50 : 40,
-          marginLeft: "auto",
-          marginRight: "auto",
-          transition: "all 150ms ease",
-          color: trashHover ? "red" : "white",
-        }}
-      >
-        🗑️
-      </div>
-
-      {/* Buttons */}
-      <div
-        style={{
-          marginTop: 20,
-          display: "flex",
-          justifyContent: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={() => setState((prev: GameState) => spawnFreeItem(prev))}
-          style={{
-            padding: "10px 16px",
-            borderRadius: 10,
-            border: "none",
-            background: "#4b7bec",
-            color: "white",
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          🎁 Free Lvl {highestLevel >= 12 ? "2" : "1"}
-        </button>
-
-        <button
-          onClick={() => setState((prev: GameState) => spawnAdItem(prev))}
-          style={{
-            padding: "10px 16px",
-            borderRadius: 10,
-            border: "none",
-            background: "#20bf6b",
-            color: "white",
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          🎥 Ad Lvl {highestLevel >= 12 ? "4" : "3"}
-        </button>
-
-        <button
-          onClick={() =>
-            setState((prev: GameState) => {
-              if (prev.autoMergeEnabled) return prev;
-              if (prev.coins < AUTO_MERGE_PRICE) return prev;
-
-              return {
-                ...prev,
-                coins: prev.coins - AUTO_MERGE_PRICE,
-                autoMergeEnabled: true,
-                autoMergeExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
-              };
-            })
-          }
-          style={{
-            padding: "10px 16px",
-            borderRadius: 10,
-            border: "none",
-            background: state.autoMergeEnabled ? "#777" : "#f368e0",
-            color: "white",
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          ⚡ Auto‑Merge{" "}
-          {state.autoMergeEnabled ? "ON" : `(${AUTO_MERGE_PRICE})`}
-        </button>
-      </div>
-
-      {/* Info */}
       <div style={{ marginTop: 20, textAlign: "center" }}>
         <p>💰 Coins: {formatCoins(state.coins)}</p>
         <p>📈 Income/sec: {formatCoins(state.incomePerSecond)}</p>
@@ -489,75 +261,12 @@ function App() {
         <p>⭐ Highest Level: {highestLevel}</p>
       </div>
 
-      {/* Offline Popup */}
-      {state.offlinePopup && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: "rgba(30,30,40,0.95)",
-              borderRadius: 16,
-              padding: 20,
-              minWidth: 260,
-              maxWidth: 320,
-              textAlign: "center",
-              boxShadow: "0 0 20px rgba(0,0,0,0.6)",
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            <h3 style={{ marginBottom: 10 }}>Welcome back!</h3>
-            <p style={{ marginBottom: 10 }}>
-              در زمان آفلاین بودن،{" "}
-              <b>{formatCoins(state.offlinePopup.coins)}</b> سکه جمع کردی.
-            </p>
-
-            <button
-              onClick={collectOffline}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 10,
-                border: "none",
-                background: "#20bf6b",
-                color: "white",
-                fontSize: 14,
-                cursor: "pointer",
-                marginRight: 8,
-              }}
-            >
-              Collect
-            </button>
-
-            {state.offlinePopup.canDouble && (
-              <button
-                onClick={doubleOfflineWithAd}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#eb3b5a",
-                  color: "white",
-                  fontSize: 14,
-                  cursor: "pointer",
-                  marginLeft: 8,
-                }}
-              >
-                2x with Ad
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      <OfflinePopup
+        popup={state.offlinePopup}
+        collectOffline={collectOffline}
+        doubleOfflineWithAd={doubleOfflineWithAd}
+        formatCoins={formatCoins}
+      />
     </div>
   );
 }
-
-export default App;
