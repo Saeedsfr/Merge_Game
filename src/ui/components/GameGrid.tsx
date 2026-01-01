@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { GameState, Cell } from "../../core/types";
 import { levelColors, levelStickers } from "../../core/config";
 
@@ -24,6 +25,25 @@ export default function GameGrid({
   unlockCell,
   setState,
 }: Props) {
+  // -----------------------------
+  // ⭐ Global PointerUp Handler
+  // -----------------------------
+  useEffect(() => {
+    function handlePointerUpGlobal() {
+      if (dragIndex !== null) {
+        handleDrop(dragIndex, hoverIndex ?? dragIndex);
+      }
+      setDragIndex(null);
+      setHoverIndex(null);
+    }
+
+    window.addEventListener("pointerup", handlePointerUpGlobal);
+    return () => window.removeEventListener("pointerup", handlePointerUpGlobal);
+  }, [dragIndex, hoverIndex]);
+
+  // -----------------------------
+  // Unlock logic
+  // -----------------------------
   function isUnlockAllowed(index: number, grid: Cell[]): boolean {
     if (index === 9) return true;
     if (index === 10) return grid[9].type !== "locked";
@@ -53,6 +73,9 @@ export default function GameGrid({
         }}
       >
         {state.grid.map((cell: Cell, index: number) => {
+          // -----------------------------
+          // Locked Cell
+          // -----------------------------
           if (cell.type === "locked") {
             const sequentialAllowed = isUnlockAllowed(index, state.grid);
             const canPay = state.coins >= cell.price;
@@ -103,6 +126,9 @@ export default function GameGrid({
             );
           }
 
+          // -----------------------------
+          // Item Cell
+          // -----------------------------
           const isItem = cell.type === "item";
           const level = isItem ? (cell as any).level : 1;
           const sticker = isItem ? levelStickers[level] : "";
@@ -127,14 +153,6 @@ export default function GameGrid({
                 if (dragIndex === null) return;
                 e.preventDefault();
                 setHoverIndex(index);
-              }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                if (dragIndex !== null) {
-                  handleDrop(dragIndex, index);
-                }
-                setDragIndex(null);
-                setHoverIndex(null);
               }}
               style={{
                 width: 80,
