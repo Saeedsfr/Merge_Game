@@ -116,20 +116,23 @@ export default function GameGrid({
           return (
             <div
               key={index}
-              draggable={isItem}
-              onDragStart={() => isItem && setDragIndex(index)}
-              onDragEnd={() => {
-                setDragIndex(null);
-                setHoverIndex(null);
+              onPointerDown={(e) => {
+                if (!isItem) return;
+                e.preventDefault();
+                setDragIndex(index);
               }}
-              onDragOver={(e) => {
+              onPointerMove={(e) => {
+                if (dragIndex === null) return;
                 e.preventDefault();
                 setHoverIndex(index);
               }}
-              onDrop={(e) => {
+              onPointerUp={(e) => {
                 e.preventDefault();
+                if (dragIndex !== null) {
+                  handleDrop(dragIndex, index);
+                }
+                setDragIndex(null);
                 setHoverIndex(null);
-                if (dragIndex !== null) handleDrop(dragIndex, index);
               }}
               style={{
                 width: 80,
@@ -140,6 +143,9 @@ export default function GameGrid({
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 34,
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                touchAction: "none",
                 transition:
                   "transform 150ms ease, box-shadow 150ms ease, background 150ms ease",
                 transform: isFlash
