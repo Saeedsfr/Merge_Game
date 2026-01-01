@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { GameState, Cell } from "../../core/types";
 import { levelColors, levelStickers } from "../../core/config";
 
@@ -24,6 +25,28 @@ export default function GameGrid({
   unlockCell,
   setState,
 }: Props) {
+
+  // ⭐ Global pointerup/touchend → همیشه drop را اجرا می‌کند
+  useEffect(() => {
+    function finishDrag() {
+      if (dragIndex !== null) {
+        handleDrop(dragIndex, hoverIndex ?? dragIndex);
+      }
+      setDragIndex(null);
+      setHoverIndex(null);
+    }
+
+    window.addEventListener("pointerup", finishDrag, { passive: false });
+    window.addEventListener("touchend", finishDrag, { passive: false });
+    window.addEventListener("touchcancel", finishDrag, { passive: false });
+
+    return () => {
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("touchend", finishDrag);
+      window.removeEventListener("touchcancel", finishDrag);
+    };
+  }, [dragIndex, hoverIndex]);
+
   function isUnlockAllowed(index: number, grid: Cell[]): boolean {
     if (index === 9) return true;
     if (index === 10) return grid[9].type !== "locked";
@@ -120,46 +143,28 @@ export default function GameGrid({
             <div
               key={index}
               className="draggable-item"
-              // Pointer (دسکتاپ + بعضی موبایل‌ها)
-              onPointerDown={(e) => {
+              // Pointer (desktop + some mobile)
+              onPointerDown={() => {
                 if (!isItem) return;
-                e.preventDefault();
                 setDragIndex(index);
                 setHoverIndex(index);
               }}
-              onPointerMove={(e) => {
+              onPointerMove={() => {
                 if (dragIndex === null) return;
-                e.preventDefault();
                 setHoverIndex(index);
               }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                if (dragIndex !== null) {
-                  handleDrop(dragIndex, index);
-                }
-                setDragIndex(null);
-                setHoverIndex(null);
-              }}
-              // Touch (تلگرام موبایل)
-              onTouchStart={(e) => {
+
+              // Touch (Telegram mobile)
+              onTouchStart={() => {
                 if (!isItem) return;
-                e.preventDefault();
                 setDragIndex(index);
                 setHoverIndex(index);
               }}
-              onTouchMove={(e) => {
+              onTouchMove={() => {
                 if (dragIndex === null) return;
-                e.preventDefault();
                 setHoverIndex(index);
               }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                if (dragIndex !== null) {
-                  handleDrop(dragIndex, index);
-                }
-                setDragIndex(null);
-                setHoverIndex(null);
-              }}
+
               style={{
                 width: 80,
                 height: 80,
