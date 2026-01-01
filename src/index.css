@@ -1,3 +1,8 @@
+html, body {
+  touch-action: none !important;
+  overflow: hidden !important;
+}
+
 /* فقط روی گرید و آیتم‌ها درگ را کنترل کن */
 .draggable-item,
 .game-grid {
