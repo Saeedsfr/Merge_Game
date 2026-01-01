@@ -14,6 +14,12 @@ type Props = {
   setState: (fn: (prev: GameState) => GameState) => void;
 };
 
+// Debug helper
+function debugLog(msg: string) {
+  const el = document.getElementById("debug-log");
+  if (el) el.innerText = msg;
+}
+
 export default function GameGrid({
   state,
   dragIndex,
@@ -25,10 +31,11 @@ export default function GameGrid({
   unlockCell,
   setState,
 }: Props) {
-  // Global pointerup/touchend → همیشه دراپ را نهایی کن
+  // Global pointer/touch end
   useEffect(() => {
     function finishDrag() {
       if (dragIndex !== null) {
+        debugLog("GLOBAL END → drop");
         handleDrop(dragIndex, hoverIndex ?? dragIndex);
       }
       setDragIndex(null);
@@ -66,6 +73,19 @@ export default function GameGrid({
         margin: "0 auto",
       }}
     >
+      {/* Debug output */}
+      <div
+        id="debug-log"
+        style={{
+          color: "yellow",
+          fontSize: 14,
+          marginBottom: 10,
+          textAlign: "center",
+        }}
+      >
+        waiting...
+      </div>
+
       <div
         className="game-grid"
         style={{
@@ -136,38 +156,30 @@ export default function GameGrid({
           const isHover = hoverIndex === index;
           const isFlash = mergeFlashIndex === index;
 
-          const commonHandlers = {
-            // Pointer (دسکتاپ + بعضی موبایل‌ها)
-            onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
-              if (!isItem) return;
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-              setDragIndex(index);
-            },
-            onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
-              if (dragIndex === null) return;
-              e.preventDefault();
-              setHoverIndex(index);
-            },
-
-            // Touch (تلگرام موبایل)
-            onTouchStart: (e: React.TouchEvent<HTMLDivElement>) => {
-              if (!isItem) return;
-              e.preventDefault();
-              setDragIndex(index);
-            },
-            onTouchMove: (e: React.TouchEvent<HTMLDivElement>) => {
-              if (dragIndex === null) return;
-              e.preventDefault();
-              setHoverIndex(index);
-            },
-          };
-
           return (
             <div
               key={index}
               className="draggable-item"
-              {...commonHandlers}
+              onPointerDown={() => {
+                if (!isItem) return;
+                debugLog("pointerDown");
+                setDragIndex(index);
+              }}
+              onPointerMove={() => {
+                if (dragIndex === null) return;
+                debugLog("pointerMove");
+                setHoverIndex(index);
+              }}
+              onTouchStart={() => {
+                if (!isItem) return;
+                debugLog("touchStart");
+                setDragIndex(index);
+              }}
+              onTouchMove={() => {
+                if (dragIndex === null) return;
+                debugLog("touchMove");
+                setHoverIndex(index);
+              }}
               style={{
                 width: 80,
                 height: 80,
