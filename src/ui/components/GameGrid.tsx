@@ -25,11 +25,9 @@ export default function GameGrid({
   unlockCell,
   setState,
 }: Props) {
-  // -----------------------------
-  // ⭐ Global PointerUp Handler
-  // -----------------------------
+  // Global pointerup/touchend → همیشه دراپ را نهایی کن
   useEffect(() => {
-    function handlePointerUpGlobal() {
+    function finishDrag() {
       if (dragIndex !== null) {
         handleDrop(dragIndex, hoverIndex ?? dragIndex);
       }
@@ -37,13 +35,17 @@ export default function GameGrid({
       setHoverIndex(null);
     }
 
-    window.addEventListener("pointerup", handlePointerUpGlobal);
-    return () => window.removeEventListener("pointerup", handlePointerUpGlobal);
+    window.addEventListener("pointerup", finishDrag);
+    window.addEventListener("touchend", finishDrag);
+    window.addEventListener("touchcancel", finishDrag);
+
+    return () => {
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("touchend", finishDrag);
+      window.removeEventListener("touchcancel", finishDrag);
+    };
   }, [dragIndex, hoverIndex]);
 
-  // -----------------------------
-  // Unlock logic
-  // -----------------------------
   function isUnlockAllowed(index: number, grid: Cell[]): boolean {
     if (index === 9) return true;
     if (index === 10) return grid[9].type !== "locked";
@@ -73,9 +75,6 @@ export default function GameGrid({
         }}
       >
         {state.grid.map((cell: Cell, index: number) => {
-          // -----------------------------
-          // Locked Cell
-          // -----------------------------
           if (cell.type === "locked") {
             const sequentialAllowed = isUnlockAllowed(index, state.grid);
             const canPay = state.coins >= cell.price;
@@ -126,9 +125,6 @@ export default function GameGrid({
             );
           }
 
-          // -----------------------------
-          // Item Cell
-          // -----------------------------
           const isItem = cell.type === "item";
           const level = isItem ? (cell as any).level : 1;
           const sticker = isItem ? levelStickers[level] : "";
@@ -140,20 +136,38 @@ export default function GameGrid({
           const isHover = hoverIndex === index;
           const isFlash = mergeFlashIndex === index;
 
+          const commonHandlers = {
+            // Pointer (دسکتاپ + بعضی موبایل‌ها)
+            onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+              if (!isItem) return;
+              e.preventDefault();
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              setDragIndex(index);
+            },
+            onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              setHoverIndex(index);
+            },
+
+            // Touch (تلگرام موبایل)
+            onTouchStart: (e: React.TouchEvent<HTMLDivElement>) => {
+              if (!isItem) return;
+              e.preventDefault();
+              setDragIndex(index);
+            },
+            onTouchMove: (e: React.TouchEvent<HTMLDivElement>) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              setHoverIndex(index);
+            },
+          };
+
           return (
             <div
               key={index}
               className="draggable-item"
-              onPointerDown={(e) => {
-                if (!isItem) return;
-                e.preventDefault();
-                setDragIndex(index);
-              }}
-              onPointerMove={(e) => {
-                if (dragIndex === null) return;
-                e.preventDefault();
-                setHoverIndex(index);
-              }}
+              {...commonHandlers}
               style={{
                 width: 80,
                 height: 80,
@@ -163,7 +177,6 @@ export default function GameGrid({
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 34,
-
                 transition:
                   "transform 150ms ease, box-shadow 150ms ease, background 150ms ease",
                 transform: isFlash

@@ -1,9 +1,17 @@
-html, body {
-  touch-action: none !important;
-  overflow: hidden !important;
+/* -----------------------------
+   1) صفحه باید اسکرول داشته باشد
+------------------------------ */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  touch-action: auto;
 }
 
-/* فقط روی گرید و آیتم‌ها درگ را کنترل کن */
+/* -----------------------------
+   2) فقط گرید و آیتم‌ها درگ را کنترل کنند
+------------------------------ */
 .draggable-item,
 .game-grid {
   touch-action: none;
@@ -12,16 +20,9 @@ html, body {
   -webkit-touch-callout: none;
 }
 
-/* کل صفحه باید اسکرول داشته باشد */
-html,
-body {
-  touch-action: auto;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-}
-
-/* استایل‌های اصلی پروژه */
+/* -----------------------------
+   3) استایل‌های اصلی پروژه
+------------------------------ */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
