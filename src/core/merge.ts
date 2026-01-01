@@ -4,6 +4,7 @@ import { calculateIncome } from "./economy";
 export function autoMergeTick(state: GameState): GameState {
   if (!state.autoMergeEnabled) return state;
 
+  // Auto-merge expiration
   if (state.autoMergeExpiresAt && Date.now() > state.autoMergeExpiresAt) {
     return {
       ...state,
@@ -12,43 +13,52 @@ export function autoMergeTick(state: GameState): GameState {
     };
   }
 
-  const grid = [...state.grid];
+  let grid = [...state.grid];
+  let changed = false;
 
-  const items = grid
-    .map((c, i) => ({ cell: c, index: i }))
-    .filter((x) => x.cell.type === "item");
+  while (true) {
+    // پیدا کردن همه آیتم‌ها
+    const items = grid
+      .map((c, i) => ({ cell: c, index: i }))
+      .filter((x) => x.cell.type === "item");
 
-  if (items.length < 2) return state;
+    if (items.length < 2) break;
 
-  const groups: Record<number, number[]> = {};
-  for (const { cell, index } of items) {
-    const lvl = (cell as any).level as number;
-    if (!groups[lvl]) groups[lvl] = [];
-    groups[lvl].push(index);
-  }
-
-  let targetLevel: number | null = null;
-  const levels = Object.keys(groups)
-    .map(Number)
-    .sort((a, b) => a - b);
-
-  for (const lvl of levels) {
-    if (groups[lvl].length >= 2) {
-      targetLevel = lvl;
-      break;
+    // گروه‌بندی بر اساس level
+    const groups: Record<number, number[]> = {};
+    for (const { cell, index } of items) {
+      const lvl = (cell as any).level as number;
+      if (!groups[lvl]) groups[lvl] = [];
+      groups[lvl].push(index);
     }
+
+    // پیدا کردن بالاترین level که حداقل ۲ آیتم دارد
+    const mergeableLevels = Object.keys(groups)
+      .map(Number)
+      .filter((lvl) => groups[lvl].length >= 2)
+      .sort((a, b) => b - a); // از بالا به پایین
+
+    if (mergeableLevels.length === 0) break;
+
+    const targetLevel = mergeableLevels[0];
+    const [a, b] = groups[targetLevel];
+
+    // merge
+    grid[a] = { type: "item", level: targetLevel + 1 };
+    grid[b] = { type: "empty" };
+
+    changed = true;
   }
 
-  if (targetLevel === null) return state;
+  if (!changed) return state;
 
-  const [a, b] = groups[targetLevel];
+  const newState: GameState = {
+    ...state,
+    grid,
+  };
 
-  grid[a] = { type: "item", level: targetLevel + 1 };
-  grid[b] = { type: "empty" };
-
-  const tempState: GameState = { ...state, grid };
   return {
-    ...tempState,
-    incomePerSecond: calculateIncome(tempState),
+    ...newState,
+    incomePerSecond: calculateIncome(newState),
   };
 }

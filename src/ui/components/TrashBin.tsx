@@ -13,14 +13,19 @@ export default function TrashBin({
 }: Props) {
   return (
     <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setTrashHover(true);
+      className="draggable-item"
+      onPointerMove={(e) => {
+        if (dragIndex !== null) {
+          e.preventDefault();
+          setTrashHover(true);
+        }
       }}
-      onDragLeave={() => setTrashHover(false)}
-      onDrop={(e) => {
+      onPointerLeave={() => setTrashHover(false)}
+      onPointerUp={(e) => {
         e.preventDefault();
-        if (dragIndex !== null) handleDrop(dragIndex, -1);
+        if (dragIndex !== null) {
+          handleDrop(dragIndex, -1);
+        }
         setTrashHover(false);
       }}
       style={{

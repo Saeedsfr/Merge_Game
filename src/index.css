@@ -1,8 +1,19 @@
-/* جلوگیری از انتخاب متن و فعال‌سازی pointer events برای تلگرام */
-* {
+/* فقط روی گرید و آیتم‌ها درگ را کنترل کن */
+.draggable-item,
+.game-grid {
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+/* کل صفحه باید اسکرول داشته باشد */
+html,
+body {
+  touch-action: auto;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
 }
 
 /* استایل‌های اصلی پروژه */
@@ -32,7 +43,6 @@ a:hover {
 }
 
 body {
-  margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
