@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import type { GameState, Cell } from "../../core/types";
 import { levelColors, levelStickers } from "../../core/config";
 
@@ -14,12 +13,6 @@ type Props = {
   setState: (fn: (prev: GameState) => GameState) => void;
 };
 
-// Debug helper
-function debugLog(msg: string) {
-  const el = document.getElementById("debug-log");
-  if (el) el.innerText = msg;
-}
-
 export default function GameGrid({
   state,
   dragIndex,
@@ -31,28 +24,6 @@ export default function GameGrid({
   unlockCell,
   setState,
 }: Props) {
-  // Global pointer/touch end
-  useEffect(() => {
-    function finishDrag() {
-      if (dragIndex !== null) {
-        debugLog("GLOBAL END → drop");
-        handleDrop(dragIndex, hoverIndex ?? dragIndex);
-      }
-      setDragIndex(null);
-      setHoverIndex(null);
-    }
-
-    window.addEventListener("pointerup", finishDrag);
-    window.addEventListener("touchend", finishDrag);
-    window.addEventListener("touchcancel", finishDrag);
-
-    return () => {
-      window.removeEventListener("pointerup", finishDrag);
-      window.removeEventListener("touchend", finishDrag);
-      window.removeEventListener("touchcancel", finishDrag);
-    };
-  }, [dragIndex, hoverIndex]);
-
   function isUnlockAllowed(index: number, grid: Cell[]): boolean {
     if (index === 9) return true;
     if (index === 10) return grid[9].type !== "locked";
@@ -73,19 +44,6 @@ export default function GameGrid({
         margin: "0 auto",
       }}
     >
-      {/* Debug output */}
-      <div
-        id="debug-log"
-        style={{
-          color: "yellow",
-          fontSize: 14,
-          marginBottom: 10,
-          textAlign: "center",
-        }}
-      >
-        waiting...
-      </div>
-
       <div
         className="game-grid"
         style={{
@@ -95,6 +53,7 @@ export default function GameGrid({
         }}
       >
         {state.grid.map((cell: Cell, index: number) => {
+          // ---------------- Locked cell ----------------
           if (cell.type === "locked") {
             const sequentialAllowed = isUnlockAllowed(index, state.grid);
             const canPay = state.coins >= cell.price;
@@ -145,6 +104,7 @@ export default function GameGrid({
             );
           }
 
+          // ---------------- Item cell ----------------
           const isItem = cell.type === "item";
           const level = isItem ? (cell as any).level : 1;
           const sticker = isItem ? levelStickers[level] : "";
@@ -160,25 +120,45 @@ export default function GameGrid({
             <div
               key={index}
               className="draggable-item"
-              onPointerDown={() => {
+              // Pointer (دسکتاپ + بعضی موبایل‌ها)
+              onPointerDown={(e) => {
                 if (!isItem) return;
-                debugLog("pointerDown");
+                e.preventDefault();
                 setDragIndex(index);
-              }}
-              onPointerMove={() => {
-                if (dragIndex === null) return;
-                debugLog("pointerMove");
                 setHoverIndex(index);
               }}
-              onTouchStart={() => {
-                if (!isItem) return;
-                debugLog("touchStart");
-                setDragIndex(index);
-              }}
-              onTouchMove={() => {
+              onPointerMove={(e) => {
                 if (dragIndex === null) return;
-                debugLog("touchMove");
+                e.preventDefault();
                 setHoverIndex(index);
+              }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                if (dragIndex !== null) {
+                  handleDrop(dragIndex, index);
+                }
+                setDragIndex(null);
+                setHoverIndex(null);
+              }}
+              // Touch (تلگرام موبایل)
+              onTouchStart={(e) => {
+                if (!isItem) return;
+                e.preventDefault();
+                setDragIndex(index);
+                setHoverIndex(index);
+              }}
+              onTouchMove={(e) => {
+                if (dragIndex === null) return;
+                e.preventDefault();
+                setHoverIndex(index);
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                if (dragIndex !== null) {
+                  handleDrop(dragIndex, index);
+                }
+                setDragIndex(null);
+                setHoverIndex(null);
               }}
               style={{
                 width: 80,
