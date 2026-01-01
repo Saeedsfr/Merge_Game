@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# Merge Game
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight, modular merge‑style idle game built with React, TypeScript, and Vite, designed for fast iteration and seamless deployment as a Telegram Mini App.
 
-Currently, two official plugins are available:
+## 🎮 Gameplay Features
+- Drag & drop items on a grid
+- Merge identical items to create higher‑level objects
+- Idle / offline income handled through modular core logic
+- Auto‑merge and spawn queue for smoother progression
+- Config‑driven economy and grid behavior via core/config.ts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🧱 Project Structure
+src/
+  App.tsx
+  main.tsx
+  gameLogic.ts
+  core/
+    config.ts
+    types.ts
+    economy.ts
+    grid.ts
+    merge.ts
+    offline.ts
+  ui/
+    components/
+      GameGrid.tsx
+      Controls.tsx
+      TrashBin.tsx
+      OfflinePopup.tsx
+    hooks/
+      useGameState.ts
 
-## React Compiler
+## 🚀 Getting Started
+npm install
+npm run dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📦 Build for Production
+npm run build
+npm run preview
 
-## Expanding the ESLint configuration
+## 🌐 Telegram Mini App (Planned)
+- Deployment via Vercel or similar hosting
+- WebApp integration with a Telegram bot
+- Future additions: cloud save, analytics, boosters, shop, daily rewards
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📝 Roadmap
+- UI polish and mobile‑first improvements
+- Daily rewards and retention mechanics
+- Boosters and monetization hooks
+- Full Telegram Mini App integration
