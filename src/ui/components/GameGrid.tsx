@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { GameState, Cell } from "../../core/types";
 import { levelColors, levelStickers } from "../../core/config";
 
@@ -12,6 +12,8 @@ type Props = {
   handleDrop: (from: number, to: number) => void;
   unlockCell: (state: GameState, index: number) => GameState;
   setState: (fn: (prev: GameState) => GameState) => void;
+  trashHover: boolean;
+  setTrashHover: (b: boolean) => void;
 };
 
 export default function GameGrid({
@@ -24,16 +26,31 @@ export default function GameGrid({
   handleDrop,
   unlockCell,
   setState,
+  trashHover,
+  setTrashHover,
 }: Props) {
+  // Drag Ghost
+  const [ghost, setGhost] = useState<{
+    level: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
-  // ⭐ Global pointerup/touchend → همیشه drop را اجرا می‌کند
+  // Global drop handler
   useEffect(() => {
     function finishDrag() {
       if (dragIndex !== null) {
-        handleDrop(dragIndex, hoverIndex ?? dragIndex);
+        if (trashHover) {
+          handleDrop(dragIndex, -1);
+        } else {
+          handleDrop(dragIndex, hoverIndex ?? dragIndex);
+        }
       }
+
       setDragIndex(null);
       setHoverIndex(null);
+      setTrashHover(false);
+      setGhost(null);
     }
 
     window.addEventListener("pointerup", finishDrag, { passive: false });
@@ -45,7 +62,15 @@ export default function GameGrid({
       window.removeEventListener("touchend", finishDrag);
       window.removeEventListener("touchcancel", finishDrag);
     };
-  }, [dragIndex, hoverIndex]);
+  }, [dragIndex, hoverIndex, trashHover]);
+
+  function startGhost(level: number, x: number, y: number) {
+    setGhost({ level, x, y });
+  }
+
+  function moveGhost(x: number, y: number) {
+    setGhost((g) => (g ? { ...g, x, y } : null));
+  }
 
   function isUnlockAllowed(index: number, grid: Cell[]): boolean {
     if (index === 9) return true;
@@ -55,18 +80,32 @@ export default function GameGrid({
   }
 
   return (
-    <div
-      style={{
-        padding: 16,
-        borderRadius: 16,
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(10px)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 0 20px rgba(0,0,0,0.4)",
-        width: "fit-content",
-        margin: "0 auto",
-      }}
-    >
+    <div style={{ position: "relative" }}>
+      {/* Drag Ghost */}
+      {ghost && (
+        <div
+          style={{
+            position: "fixed",
+            left: ghost.x - 40,
+            top: ghost.y - 40,
+            width: 80,
+            height: 80,
+            borderRadius: 12,
+            background: levelColors[ghost.level],
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 34,
+            pointerEvents: "none",
+            opacity: 0.9,
+            transform: "scale(1.1)",
+            zIndex: 9999,
+          }}
+        >
+          {levelStickers[ghost.level]}
+        </div>
+      )}
+
       <div
         className="game-grid"
         style={{
@@ -76,7 +115,7 @@ export default function GameGrid({
         }}
       >
         {state.grid.map((cell: Cell, index: number) => {
-          // ---------------- Locked cell ----------------
+          // Locked cell
           if (cell.type === "locked") {
             const sequentialAllowed = isUnlockAllowed(index, state.grid);
             const canPay = state.coins >= cell.price;
@@ -127,7 +166,7 @@ export default function GameGrid({
             );
           }
 
-          // ---------------- Item cell ----------------
+          // Item cell
           const isItem = cell.type === "item";
           const level = isItem ? (cell as any).level : 1;
           const sticker = isItem ? levelStickers[level] : "";
@@ -139,32 +178,37 @@ export default function GameGrid({
           const isHover = hoverIndex === index;
           const isFlash = mergeFlashIndex === index;
 
+          function startDrag(x: number, y: number) {
+            if (!isItem) return;
+            setDragIndex(index);
+            setHoverIndex(index);
+            startGhost(level, x, y);
+          }
+
+          function moveDrag(x: number, y: number) {
+            if (dragIndex === null) return;
+            setHoverIndex(index);
+            moveGhost(x, y);
+          }
+
           return (
             <div
               key={index}
               className="draggable-item"
-              // Pointer (desktop + some mobile)
-              onPointerDown={() => {
-                if (!isItem) return;
-                setDragIndex(index);
-                setHoverIndex(index);
-              }}
-              onPointerMove={() => {
-                if (dragIndex === null) return;
-                setHoverIndex(index);
-              }}
-
-              // Touch (Telegram mobile)
-              onTouchStart={() => {
-                if (!isItem) return;
-                setDragIndex(index);
-                setHoverIndex(index);
-              }}
-              onTouchMove={() => {
-                if (dragIndex === null) return;
-                setHoverIndex(index);
-              }}
-
+              onPointerDown={(e) => startDrag(e.clientX, e.clientY)}
+              onPointerMove={(e) => moveDrag(e.clientX, e.clientY)}
+              onTouchStart={(e) =>
+                startDrag(
+                  e.touches[0].clientX,
+                  e.touches[0].clientY
+                )
+              }
+              onTouchMove={(e) =>
+                moveDrag(
+                  e.touches[0].clientX,
+                  e.touches[0].clientY
+                )
+              }
               style={{
                 width: 80,
                 height: 80,
@@ -175,7 +219,7 @@ export default function GameGrid({
                 justifyContent: "center",
                 fontSize: 34,
                 transition:
-                  "transform 150ms ease, box-shadow 150ms ease, background 150ms ease",
+                  "transform 150ms ease, box-shadow 150ms ease",
                 transform: isFlash
                   ? "scale(1.15)"
                   : isDragging

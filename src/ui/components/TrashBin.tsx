@@ -2,31 +2,29 @@ type Props = {
   dragIndex: number | null;
   trashHover: boolean;
   setTrashHover: (b: boolean) => void;
-  handleDrop: (from: number, to: number) => void;
 };
 
 export default function TrashBin({
   dragIndex,
   trashHover,
   setTrashHover,
-  handleDrop,
 }: Props) {
   return (
     <div
-      className="draggable-item"
-      onPointerMove={(e) => {
+      className="trash-bin"
+      onPointerMove={() => {
         if (dragIndex !== null) {
-          e.preventDefault();
           setTrashHover(true);
         }
       }}
       onPointerLeave={() => setTrashHover(false)}
-      onPointerUp={(e) => {
-        e.preventDefault();
+      onTouchMove={() => {
         if (dragIndex !== null) {
-          handleDrop(dragIndex, -1);
+          setTrashHover(true);
         }
-        setTrashHover(false);
+      }}
+      onTouchEnd={() => {
+        // drop در global pointerup انجام می‌شود
       }}
       style={{
         marginTop: 10,

@@ -32,66 +32,69 @@ export default function App() {
   } = useGameState();
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0d0d0f, #1a1a1f)",
-        padding: 20,
-        color: "white",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <h1
+    <div className="page-container">
+      <div
         style={{
-          fontSize: 24,
-          fontWeight: "bold",
-          marginBottom: 20,
-          textAlign: "center",
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #0d0d0f, #1a1a1f)",
+          padding: 20,
+          color: "white",
+          fontFamily: "sans-serif",
         }}
       >
-        Merge Creatures
-      </h1>
+        <h1
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            marginBottom: 20,
+            textAlign: "center",
+          }}
+        >
+          Merge Creatures
+        </h1>
 
-      <GameGrid
-        state={state}
-        dragIndex={dragIndex}
-        hoverIndex={hoverIndex}
-        mergeFlashIndex={mergeFlashIndex}
-        setDragIndex={setDragIndex}
-        setHoverIndex={setHoverIndex}
-        handleDrop={handleDrop}
-        unlockCell={unlockCell}
-        setState={setState}
-      />
+        <GameGrid
+          state={state}
+          dragIndex={dragIndex}
+          hoverIndex={hoverIndex}
+          mergeFlashIndex={mergeFlashIndex}
+          setDragIndex={setDragIndex}
+          setHoverIndex={setHoverIndex}
+          handleDrop={handleDrop}
+          unlockCell={unlockCell}
+          setState={setState}
+          trashHover={trashHover}
+          setTrashHover={setTrashHover}
+        />
 
-      <TrashBin
-        dragIndex={dragIndex}
-        trashHover={trashHover}
-        setTrashHover={setTrashHover}
-        handleDrop={handleDrop}
-      />
+        <TrashBin
+          dragIndex={dragIndex}
+          trashHover={trashHover}
+          setTrashHover={setTrashHover}
+        />
 
-      <Controls
-        state={state}
-        highestLevel={highestLevel}
-        spawnFreeItem={spawnFreeItem}
-        spawnAdItem={spawnAdItem}
-        setState={setState}
-      />
+        <Controls
+          state={state}
+          highestLevel={highestLevel}
+          spawnFreeItem={spawnFreeItem}
+          spawnAdItem={spawnAdItem}
+          setState={setState}
+        />
 
-      <div style={{ marginTop: 20, textAlign: "center" }}>
-        <p>💰 Coins: {formatCoins(state.coins)}</p>
-        <p>📈 Income/sec: {formatCoins(state.incomePerSecond)}</p>
-        <p>🕒 Queue: {state.queue ? `L${state.queue.level}` : "empty"}</p>
-        <p>⭐ Highest Level: {highestLevel}</p>
+        <div style={{ marginTop: 20, textAlign: "center" }}>
+          <p>💰 Coins: {formatCoins(state.coins)}</p>
+          <p>📈 Income/sec: {formatCoins(state.incomePerSecond)}</p>
+          <p>🕒 Queue: {state.queue ? `L${state.queue.level}` : "empty"}</p>
+          <p>⭐ Highest Level: {highestLevel}</p>
+        </div>
+
+        <OfflinePopup
+          popup={state.offlinePopup}
+          collectOffline={collectOffline}
+          doubleOfflineWithAd={doubleOfflineWithAd}
+          formatCoins={formatCoins}
+        />
       </div>
-
-      <OfflinePopup
-        popup={state.offlinePopup}
-        collectOffline={collectOffline}
-        doubleOfflineWithAd={doubleOfflineWithAd}
-        formatCoins={formatCoins}
-      />
     </div>
   );
 }
